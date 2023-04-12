@@ -2,7 +2,7 @@ import scrapy
 from scrapy.crawler import CrawlerProcess
 import json
 import re
-from constant import HEADERS, CONTACT_HEADERS, X_Li_Track
+from constant import *
 from scrapy import signals
 from copy import deepcopy
 from datetime import datetime
@@ -17,19 +17,21 @@ from jsonpath_ng import jsonpath, parse
 
 class Linkedin_Scraper(scrapy.Spider):
     name = 'insta_spider'
+    result_counter = 0
     link_extractor = URLExtract()
     email_regx = re.compile('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}', re.IGNORECASE)
-    search_endpoint = 'https://www.linkedin.com:443/voyager/api/graphql?' + 'includeWebMetadata=true&variables=(start:{},origin:SWITCH_SEARCH_VERTICAL,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&&queryId=voyagerSearchDashClusters.0814efb14ee283f3e918ff9608d705fd'
-    contacts_endpoint = 'https://www.linkedin.com/voyager/api/graphql?variables=(memberIdentity:{})&&queryId=voyagerIdentityDashProfiles.84cab0be7183be5d0b8e79cd7d5ffb7b'
-    profile_endpoint = 'https://www.linkedin.com/voyager/api/graphql?includeWebMetadata=true&variables=(profileUrn:urn%3Ali%3Afsd_profile%3A{})&&queryId=voyagerIdentityDashProfileCards.b3af3663609a423adeca8d1019a6f19b'
-    profile_endpoint_2 = 'https://www.linkedin.com:443/voyager/api/graphql?includeWebMetadata=true&variables=(profileUrn:urn%3Ali%3Afsd_profile%3A{},sectionType:skills,locale:en_US)&&queryId=voyagerIdentityDashProfileComponents.1a6f6d936902bb480940179c442456b2'
-    email_regx = re.compile('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}', re.IGNORECASE)
+    search_endpoint = SEARCH_ENDPOINT
+    contacts_endpoint = CONTACTS_ENDPOINT
+    profile_endpoint = PROFILE_ENDPOINT
+    profile_endpoint_2 = PROFILE_ENDPOINT_2
 
 
     def start_requests(self):
         for keyword in self.keywords:
+            start = 0
+            keyword['start'] = start
             headers = self.update_headers(keyword=keyword)
-            yield scrapy.Request(url=self.search_endpoint.format(0, keyword.get('keyword')), headers=headers, cookies=self.session_cookies, callback=self.parse, cb_kwargs=dict(keyword=keyword), dont_filter=True)
+            yield scrapy.Request(url=self.search_endpoint.format(start, keyword.get('keyword')), headers=headers, cookies=self.session_cookies, callback=self.parse, cb_kwargs=dict(keyword=keyword), dont_filter=True)
 
             
     async def parse(self, response, keyword):
@@ -56,8 +58,28 @@ class Linkedin_Scraper(scrapy.Spider):
                         "metric_Subscribers": followers,
                     }
                     item.update(profile_detail)
-                    yield item
-# 
+                    if self.result_counter >= keyword.get('maxResults'):
+                        self.logger.info(" [+] Limit reached")
+                        break 
+                    self.result_counter += 1
+                    yield scrapy.Request(self.contacts_endpoint.format(channelId), callback=self.parse_contacts, headers=self.update_headers(username=username), cookies=self.session_cookies, cb_kwargs={"item":item}, dont_filter=True)                   
+        if self.result_counter < keyword.get('maxResults'):
+            self.logger.info(" [+] Next Page")
+            start = keyword.get('start') + 10
+            keyword.update({'start': start})
+            headers = self.update_headers(keyword=keyword)
+            yield scrapy.Request(url=self.search_endpoint.format(start, keyword.get('keyword')), headers=headers, cookies=self.session_cookies, callback=self.parse, cb_kwargs=dict(keyword=keyword), dont_filter=True)
+
+
+    async def parse_contacts(self, response, item):
+        person = response.json().get('included', [{}])[0]
+        phone = person.get('phoneNumbers')
+        email = person.get('emailAddress').get('emailAddress') if person.get('emailAddress') else ''
+        website = person.get('websites')[0].get('url') if person.get('websites') else ''
+        contactInfo = f'{"".join(phone) if isinstance(phone, list) else phone},{website},{email}'
+        item.update({'contactInfo': contactInfo.strip(','), "emailfromContactInfo": email})
+        yield item
+
 
     async def get_profile_detail(self, channelId, username):
         url = self.profile_endpoint.format(channelId)
@@ -107,6 +129,7 @@ class Linkedin_Scraper(scrapy.Spider):
         else:
             followers = self.convert_subscribers(followers_text.split('followers')[0].strip()) if 'followers' in followers_text else 0
             return followers
+
 
     @staticmethod
     def convert_subscribers(subscribers: str) -> int:
@@ -181,5 +204,5 @@ crawler = CrawlerProcess(settings={
     "DOWNLOAD_DELAY": 10,
     "CONCURRENT_REQUESTS": 1,
 })
-crawler.crawl(Linkedin_Scraper, keywords=[{"keyword":'Bill Gates',"iDOutRequest":1, "minimumNumberofSubscribers":5, "lastUploadCutoffDate":100}])
+crawler.crawl(Linkedin_Scraper, keywords=[{"keyword":'Bill Gates',"iDOutRequest":1, "minimumNumberofSubscribers":-1, "lastUploadCutoffDate":100, 'maxResults':10}])
 crawler.start()

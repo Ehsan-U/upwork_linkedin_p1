@@ -34,3 +34,8 @@ CONTACT_HEADERS = {
 }
 
 X_Li_Track = '{"clientVersion":"1.12.2593","mpVersion":"1.12.2593","osName":"web","deviceFormFactor":"DESKTOP","mpName":"voyager-web","displayDensity":1,"displayWidth":1680,"displayHeight":1050}'
+
+SEARCH_ENDPOINT = 'https://www.linkedin.com:443/voyager/api/graphql?' + 'includeWebMetadata=true&variables=(start:{},origin:SWITCH_SEARCH_VERTICAL,query:(keywords:{},flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&&queryId=voyagerSearchDashClusters.0814efb14ee283f3e918ff9608d705fd'
+CONTACTS_ENDPOINT = 'https://www.linkedin.com/voyager/api/graphql?variables=(memberIdentity:{})&&queryId=voyagerIdentityDashProfiles.84cab0be7183be5d0b8e79cd7d5ffb7b'
+PROFILE_ENDPOINT = 'https://www.linkedin.com/voyager/api/graphql?includeWebMetadata=true&variables=(profileUrn:urn%3Ali%3Afsd_profile%3A{})&&queryId=voyagerIdentityDashProfileCards.b3af3663609a423adeca8d1019a6f19b'
+PROFILE_ENDPOINT_2 = 'https://www.linkedin.com:443/voyager/api/graphql?includeWebMetadata=true&variables=(profileUrn:urn%3Ali%3Afsd_profile%3A{},sectionType:skills,locale:en_US)&&queryId=voyagerIdentityDashProfileComponents.1a6f6d936902bb480940179c442456b2'
