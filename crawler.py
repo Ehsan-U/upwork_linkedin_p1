@@ -1,3 +1,4 @@
+import argparse
 import scrapy
 from scrapy.crawler import CrawlerProcess
 import json
@@ -198,11 +199,20 @@ class Linkedin_Scraper(scrapy.Spider):
             self.session_cookies = config.get("cookies")
             
     
+#####################
+parser = argparse.ArgumentParser(description='Run Scrapy spider with arguments')
+parser.add_argument('--keyword', type=str, required=True, help='Keyword for the spider')
+parser.add_argument('--id_out_request', type=int, required=True, help='ID out request for the spider')
+parser.add_argument('--min_subs', type=int, required=False, help='Minimum number of subscribers')
+parser.add_argument('--max_results', type=int, required=False, help='Maximum number of results')
+parser.add_argument('--cutoff_days', type=int, required=False, help='Cutoff days')
+args = parser.parse_args()
+
 
 crawler = CrawlerProcess(settings={
     "HTTPCACHE_ENABLED": True,
     "DOWNLOAD_DELAY": 10,
     "CONCURRENT_REQUESTS": 1,
 })
-crawler.crawl(Linkedin_Scraper, keywords=[{"keyword":'Bill Gates',"iDOutRequest":1, "minimumNumberofSubscribers":-1, "lastUploadCutoffDate":100, 'maxResults':10}])
+crawler.crawl(Linkedin_Scraper, keywords=[{"keyword":args.keyword,"iDOutRequest":args.id_out_request, "minimumNumberofSubscribers":args.min_subs, "lastUploadCutoffDate":args.cutoff_days, 'maxResults':args.max_results}])
 crawler.start()
