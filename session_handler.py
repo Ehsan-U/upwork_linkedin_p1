@@ -20,6 +20,7 @@ class Session_Handler():
         s=Service(ChromeDriverManager().install())
         systm = os.getlogin()
         opt = ChromeOptions()
+        opt.add_experimental_option('excludeSwitches', ['enable-logging'])
         opt.add_argument("--profile-directory=Default")
         opt.add_argument(f"--user-data-dir=C:\\Users\\{systm}\\AppData\\Local\\Google\\Chrome\\User Data\\")
         self.driver = Chrome(service=s, options=opt)
