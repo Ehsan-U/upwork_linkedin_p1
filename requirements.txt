@@ -1,0 +1,6 @@
+selenium
+scrapy
+urlextract
+webdriver_manager
+jsonpath_ng
+pytz
